@@ -1,12 +1,12 @@
 # SO-101 Imitation Learning: ACT Policy on Edge Hardware
 
-End-to-end imitation learning on the open-source **SO-101** robotic arm: teleoperated data collection, training an **ACT (Action Chunking with Transformers)** policy with [LeRobot](https://github.com/huggingface/lerobot), and deploying it on a **Synaptics Astra** edge board with a Torq NPU.
+End-to-end imitation learning on the open-source **SO-101** robotic arm: teleoperated data collection, training an **ACT (Action Chunking with Transformers)** policy with [LeRobot](https://github.com/huggingface/lerobot), and deploying it on a **Astra** edge board with a Torq NPU.
 
 <p align="center">
   <img src="media/inference_demo.gif" alt="SO-101 arm picking up a ball and placing it in a box, running the trained ACT policy" width="240">
 </p>
 
-<p align="center"><em>The trained ACT policy running on the Synaptics Astra board and driving the SO-101: pick up the ball, place it in the box.<br>
+<p align="center"><em>The trained ACT policy running on the Astra board and driving the SO-101: pick up the ball, place it in the box.<br>
 <a href="media/inference_demo.mp4">Full 47 s video</a></em></p>
 
 ## Highlights
@@ -34,13 +34,13 @@ End-to-end imitation learning on the open-source **SO-101** robotic arm: teleope
                                         compile for the Torq NPU, check against fp32
                                                          │
                                                          ▼
-                                  Synaptics Astra board ──▶ SO-101 follower
+                                  Astra board ──▶ SO-101 follower
 ```
 
 1. **Data collection.** A human drives the leader arm while the follower arm and cameras are recorded with `lerobot-record`. Collection ran on a Windows laptop with no GPU.
 2. **Training.** The dataset was moved to a Linux tower and an ACT policy trained with `lerobot-train`.
 3. **Edge optimization.** The trained policy is compiled into a single model file for the Torq NPU and validated against the fp32 reference (details below).
-4. **Deployment and evaluation.** The compiled model runs on the Synaptics Astra board and drives the arm in a 30 Hz control loop, giving 9 of 10 successful trials.
+4. **Deployment and evaluation.** The compiled model runs on the Astra board and drives the arm in a 30 Hz control loop, giving 9 of 10 successful trials.
 
 ## Task
 
@@ -57,14 +57,36 @@ The L1 loss falls steadily over the 100k-step ACT run. The same W&B project also
 
 ## Edge optimization
 
-Getting the policy from a PyTorch checkpoint to the NPU involved compiling the model, checking that compilation did not change its behavior, and measuring latency in the real control loop.
+The policy is trained in fp32 on the GPU, but the board's NPU runs it in **bf16** (bfloat16). Converting from fp32 to bf16 and proving the conversion did not change the arm's behavior was the main optimization step.
 
-1. **Compile for the NPU.** The full ACT policy is compiled ahead of time into one 69.2 MB model file for the Torq NPU.
-2. **Check accuracy against fp32.** The compiled model's outputs were compared with the fp32 PyTorch policy on 30 frames. Relative L2 error was 0.36%, mean absolute action error 0.130° (0.04° to 0.31° per joint), and the worst case was 1.31° on the elbow.
-3. **Measure latency.** On the board the NPU takes a median of 298.4 ms per policy call (p95 298.6 ms) over 30 frames. Inside the live control loop the mean is 335 ms.
-4. **Run live.** A 120 s run held about 29.9 Hz with no hold-gaps across 3,584 control steps. The only disturbances were 2 USB camera dropouts.
+### Why bf16
 
-_Add the exact compile commands, numeric precision used (bf16/int8), and any quantization or calibration step here._
+- **Same dynamic range as fp32.** bf16 keeps fp32's 8-bit exponent and only drops mantissa bits (7 instead of 23). Weights and activations that span many orders of magnitude, as in a transformer, do not overflow or underflow, so the conversion needs no per-layer scaling.
+- **No calibration data.** int8 quantization needs a representative dataset to pick scales, and a bad choice can quietly ruin a policy that outputs joint angles. bf16 is a plain cast.
+- **Half the size and memory traffic.** Every weight takes 2 bytes instead of 4, which matters on an edge board where memory bandwidth, not arithmetic, usually limits latency.
+
+### How the model was converted
+
+1. Train the ACT policy in fp32 (100k steps, see above) and keep that checkpoint as the reference.
+2. Compile the full policy, cast to bf16, into a single 69.2 MB model for the Torq NPU.
+3. Run the compiled model on the board.
+
+_Add the exact compile commands, tool versions, and which parts of the model (all weights, or only some layers) are bf16._
+
+### How the error was verified
+
+The question was whether bf16 changes what the arm is told to do. I fed the same 30 recorded frames (camera images and joint state) to both models and compared their outputs:
+
+- **Reference:** the original fp32 PyTorch policy.
+- **Test:** the compiled bf16 model running on the NPU.
+- **Relative L2 error:** the norm of the difference between the two action outputs divided by the norm of the fp32 output. This came to **0.36%** (0.0036 as a fraction, not 36%): the bf16 outputs differ from fp32 by about a third of a percent of their size.
+- **Error in joint degrees:** because the outputs are joint angles, the same comparison was also done in degrees. The mean absolute error is 0.130° (0.04° to 0.31° across joints), and the worst single case is 1.31° on the elbow.
+
+An error of about a degree is small next to the arm's own tracking error, so bf16 was judged safe. The live test confirmed it: 9 of 10 pick-and-place trials succeeded.
+
+### Latency
+
+On the board the NPU takes a median of 298.4 ms per policy call (p95 298.6 ms) over 30 frames. Inside the live control loop the mean is 335 ms. A 120 s run held about 29.9 Hz with no hold-gaps across 3,584 control steps, with 2 USB camera dropouts.
 
 ## Results
 
@@ -83,7 +105,7 @@ _Add the exact compile commands, numeric precision used (bf16/int8), and any qua
 - USB cameras
 - Windows laptop (data collection, ADB link to the board)
 - Linux tower, RTX 4060 (training)
-- Synaptics Astra board with Torq NPU (deployment)
+- Astra board with Torq NPU (deployment)
 
 ## Reproducing
 
