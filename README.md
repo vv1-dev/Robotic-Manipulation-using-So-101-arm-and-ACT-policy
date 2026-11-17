@@ -4,7 +4,12 @@ End-to-end imitation learning on the open-source **SO-101** robotic arm: teleope
 
 Built as the Synaptics-sponsored capstone at UC Irvine (MS, Embedded & Cyber-Physical Systems).
 
-> **Demo:** _add a GIF or video link here (e.g. `media/demo.gif`)_
+<p align="center">
+  <img src="media/inference_demo.gif" alt="SO-101 arm picking up a ball and placing it in a box, running the trained ACT policy" width="240">
+</p>
+
+<p align="center"><em>The trained ACT policy driving the SO-101: pick up the ball, place it in the box.<br>
+<a href="media/inference_demo.mp4">Full 47 s video</a></em></p>
 
 ## Highlights
 
@@ -39,7 +44,9 @@ Built as the Synaptics-sponsored capstone at UC Irvine (MS, Embedded & Cyber-Phy
 
 ## Task
 
-_Describe the task the arm performs (objects, workspace layout, success criterion, how the 80% was measured, number of trials)._
+The arm picks up an orange ball from the table and places it in a white box (see the demo above). In the full video it repeats the pick-and-place back to back.
+
+_Add the success criterion, how the 80% was measured, and the number of trials._
 
 ## Results
 
