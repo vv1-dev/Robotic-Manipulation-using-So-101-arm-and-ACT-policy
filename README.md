@@ -2,8 +2,6 @@
 
 End-to-end imitation learning on the open-source **SO-101** robotic arm: teleoperated data collection, training an **ACT (Action Chunking with Transformers)** policy with [LeRobot](https://github.com/huggingface/lerobot), and deploying it on a **Synaptics Astra** edge board with a Torq NPU.
 
-Built as the Synaptics-sponsored capstone at UC Irvine (MS, Embedded & Cyber-Physical Systems).
-
 <p align="center">
   <img src="media/inference_demo.gif" alt="SO-101 arm picking up a ball and placing it in a box, running the trained ACT policy" width="240">
 </p>
@@ -40,13 +38,12 @@ Built as the Synaptics-sponsored capstone at UC Irvine (MS, Embedded & Cyber-Phy
 1. **Data collection.** A human drives the leader arm while the follower arm and cameras are recorded with `lerobot-record`. Collection ran on a Windows laptop with no GPU.
 2. **Training.** The dataset was moved to a Linux tower and an ACT policy trained with `lerobot-train`.
 3. **Evaluation.** The policy was run on the real arm, giving 80% success on the task.
-4. **Edge deployment.** The trained policy is deployed to a Synaptics Astra board, using its Torq NPU for inference, following Synaptics' [SO-101 vision robotic arm tutorial](https://developer.synaptics.com/blog/vision-robotic-arm).
+4. **Edge deployment.** The trained policy is deployed to a Synaptics Astra board, using its Torq NPU for inference
 
 ## Task
 
 The arm picks up an orange ball from the table and places it in a white box (see the demo above). In the full video it repeats the pick-and-place back to back.
 
-_Add the success criterion, how the 80% was measured, and the number of trials._
 
 ## Results
 
@@ -54,10 +51,9 @@ _Add the success criterion, how the 80% was measured, and the number of trials._
 |---|---|
 | Demonstrations | 200 |
 | Task success rate | 80% |
-| Trials | _fill in_ |
-| Inference latency on board | _fill in_ |
+| Trials | 10 |
+| Inference latency on board | 329ms |
 
-_Add training-loss curves, failure-mode notes, and a short comparison of host vs. on-board inference here._
 
 ## Hardware
 
@@ -75,27 +71,17 @@ python -m venv lerobot_env && source lerobot_env/bin/activate
 pip install lerobot
 
 # 2. calibrate and teleoperate
-lerobot-calibrate ...
-lerobot-teleoperate ...
+lerobot-teleoperate.exe --robot.type so101_follower --robot.port COM4 --robot.id follower --teleop.type so101_leader --teleop.port COM3 --teleop.id leader --robot.cameras "{ top: {type: opencv, index_or_path: 2, width: 320, height: 240, fps: 30, fourcc: MJPG}, wrist: {type: opencv, index_or_path: 1, width: 320, height: 240, fps: 30, fourcc: MJPG}}" --display_data True
 
 # 3. record demonstrations
-lerobot-record ...
+ lerobot-record.exe --robot.type so101_follower --robot.port COM4 --robot.id follower --teleop.type so101_leader --teleop.port COM3 --teleop.id leader --robot.cameras "{ top: {type: opencv, index_or_path: 2, width: 320, height: 240, fps: 30, fourcc: MJPG}, wrist: {type: opencv, index_or_path: 1, width: 320, height: 240, fps: 30, fourcc: MJPG}}" --display_data True  --dataset.repo_id vv1-dev1/Oct26 --dataset.num_episodes=80 --dataset.single_task="Mini basketball" --dataset.vcodec h264 --dataset.streaming_encoding=true --dataset.encoder_threads 6 --dataset.encoder_queue_maxsize=2000 --dataset.num_image_writer_processes=2 --dataset.push_to_hub True --dataset.episode_time_s 15 --resume True
 
 # 4. train ACT
-lerobot-train --policy.type=act --dataset.repo_id=<your-hf-dataset> ...
+lerobot-train --dataset.repo_id /home/krg/Varsha/MiniBasketballRecordings --policy.type act --policy.repo_id train --wandb.enable true --wandb.project lerobot
 ```
 
-_Replace the `...` with the exact arguments you used (ports, camera indices, dataset id, steps, batch size)._
-
-## Roadmap
-
-- Voice-triggered tasks: a small language model on the board CPU launches the ACT policy on the NPU
-- Pill-dispensing demo: after a voice-triggered dispense, the arm moves the medication to a tray
-- Water-pouring loop: the arm checks whether a glass is empty and pours, with a 3D-printed jug and glass
 
 ## Acknowledgements
 
 - [LeRobot](https://github.com/huggingface/lerobot) by Hugging Face
 - [SO-101](https://github.com/TheRobotStudio/SO-ARM100) arm design by The Robot Studio
-- Synaptics, for sponsoring the capstone and providing the hardware
-- Prof. Fadi Kurdahi and the CECS lab, UC Irvine
