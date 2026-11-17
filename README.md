@@ -8,7 +8,7 @@ Built as the Synaptics-sponsored capstone at UC Irvine (MS, Embedded & Cyber-Phy
   <img src="media/inference_demo.gif" alt="SO-101 arm picking up a ball and placing it in a box, running the trained ACT policy" width="240">
 </p>
 
-<p align="center"><em>The trained ACT policy driving the SO-101: pick up the ball, place it in the box.<br>
+<p align="center"><em>The trained ACT policy running on the Synaptics Astra board and driving the SO-101: pick up the ball, place it in the box.<br>
 <a href="media/inference_demo.mp4">Full 47 s video</a></em></p>
 
 ## Highlights
